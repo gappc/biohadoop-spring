@@ -1,22 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:yarn="http://www.springframework.org/schema/yarn"
-	xmlns:util="http://www.springframework.org/schema/util" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:yarn="http://www.springframework.org/schema/yarn"
 	xmlns:yarn-int="http://www.springframework.org/schema/yarn/integration"
+	xmlns:yarn-batch="http://www.springframework.org/schema/yarn/batch"
+	xmlns:int="http://www.springframework.org/schema/integration"
+	xmlns:int-ip="http://www.springframework.org/schema/integration/ip"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:util="http://www.springframework.org/schema/util"
 	xsi:schemaLocation="http://www.springframework.org/schema/yarn http://www.springframework.org/schema/yarn/spring-yarn.xsd
-http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
-http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
-http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
-	
-	<bean id="taskScheduler"
-		class="org.springframework.scheduling.concurrent.ConcurrentTaskScheduler" />
-	<bean id="taskExecutor" class="org.springframework.core.task.SyncTaskExecutor" />
-	
-	<yarn:master>
-	  <yarn:container-runner/>
-	</yarn:master>
+		http://www.springframework.org/schema/yarn/integration http://www.springframework.org/schema/yarn/integration/spring-yarn-integration.xsd
+		http://www.springframework.org/schema/yarn/batch http://www.springframework.org/schema/yarn/batch/spring-yarn-batch.xsd
+		http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd
+		http://www.springframework.org/schema/integration/ip http://www.springframework.org/schema/integration/ip/spring-integration-ip.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
 
-   <context:property-placeholder location="hadoop.properties" />
+	<context:annotation-config />
+
+	<bean id="yarnEventPublisher" class="org.springframework.yarn.event.DefaultYarnEventPublisher"/>
+
+	<context:property-placeholder location="hadoop.properties"/>
 
 	<yarn:configuration>
 		fs.defaultFS=${SHDP_HD_FS}
@@ -25,25 +32,61 @@ http://www.springframework.org/schema/util http://www.springframework.org/schema
 	</yarn:configuration>
 
 	<yarn:localresources>
-		<yarn:hdfs path="/tmp/lib/*.jar" />
+		<yarn:hdfs path="/tmp/lib/*"/>
 	</yarn:localresources>
 
 	<yarn:environment>
-		<yarn:classpath />
+		<yarn:classpath use-default-yarn-classpath="true" delimiter=":">
+			./*
+		</yarn:classpath>
 	</yarn:environment>
+
+	<yarn:master appmaster-class="org.springframework.yarn.examples.CustomAppmaster" >
+		<yarn:container-allocator memory="2000"/>   
+		<yarn:container-runner/>
+	</yarn:master>
+
+	<bean id="mapper" class="org.springframework.yarn.integration.support.Jackson2ObjectMapperFactoryBean" />
+
+	<yarn-int:converter>
+		<bean class="org.springframework.yarn.integration.convert.MindObjectToHolderConverter">
+			<constructor-arg ref="mapper"/>
+		</bean>
+	</yarn-int:converter>
+
+	<yarn-int:converter>
+		<bean class="org.springframework.yarn.integration.convert.MindHolderToObjectConverter">
+			<constructor-arg ref="mapper"/>
+		</bean>
+	</yarn-int:converter>
+
+	<bean id="customService" class="org.springframework.yarn.examples.CustomAppmasterService" />
+
+	<yarn-int:amservice service-ref="customService"/>
 	
-	<!-- <bean id="yarnAmservice" class="at.ac.uibk.dps.biohadoopspring.SimpleService" />
-	<bean id="yarnClientAmservice" class="at.ac.uibk.dps.biohadoopspring.SimpleClient" /> -->
-		
-	<bean id="customService" class="at.ac.uibk.dps.biohadoopspring.SimpleService" />
+	<!-- <bean id="serializer"
+  class="org.springframework.yarn.integration.ip.mind.MindRpcSerializer" />
+	<bean id="deserializer"
+	  class="org.springframework.yarn.integration.ip.mind.MindRpcSerializer" />
+	<bean id="socketSupport"
+	  class="org.springframework.yarn.integration.support.DefaultPortExposingTcpSocketSupport" />
 
-	<!-- <yarn-int:amservice service-ref="customService"/> -->
+	<int-ip:tcp-connection-factory id="serverConnectionFactory"
+	  type="server"
+	  port="31001"
+	  socket-support="socketSupport"
+	  serializer="serializer"
+	  deserializer="deserializer"/>
 
-	<!-- <yarn-int:amservice
-	  service-impl="at.ac.uibk.dps.biohadoopspring.SimpleService"
-	  default-port="1234"/>
-	<yarn-int:amservice-client
-	  service-impl="at.ac.uibk.dps.biohadoopspring.SimpleClient"
-	  host="master"
-	  port="1234"/> -->
+	<int-ip:tcp-inbound-gateway id="inboundGateway"
+	  connection-factory="serverConnectionFactory"
+	  request-channel="serverChannel" />
+	
+	<int:channel id="serverChannel" />
+	
+	<yarn-int:amservice
+	  service-impl="org.springframework.yarn.examples.CustomAppmasterService"
+	  channel="serverChannel"
+	  socket-support="socketSupport"/> -->
+
 </beans>

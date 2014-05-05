@@ -1,4 +1,19 @@
-package at.ac.uibk.dps.biohadoopspring;
+/*
+ * Copyright 2013 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.springframework.yarn.examples;
 
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -18,10 +33,16 @@ import org.springframework.yarn.am.ContainerLauncherInterceptor;
 import org.springframework.yarn.am.StaticEventingAppmaster;
 import org.springframework.yarn.am.container.AbstractLauncher;
 
-public class SimpleAppmaster extends StaticEventingAppmaster implements
-		ContainerLauncherInterceptor {
+/**
+ * Custom application master handling containers and keeping
+ * state of job statuses.
+ *
+ * @author Janne Valkealahti
+ *
+ */
+public class CustomAppmaster extends StaticEventingAppmaster implements ContainerLauncherInterceptor {
 
-	private static final Log log = LogFactory.getLog(SimpleAppmaster.class);
+	private final static Log log = LogFactory.getLog(CustomAppmaster.class);
 
 	/** List of job id's to run */
 	private LinkedList<Long> pendingJobs = new LinkedList<Long>();
@@ -34,10 +55,16 @@ public class SimpleAppmaster extends StaticEventingAppmaster implements
 
 	@Override
 	protected void onInit() throws Exception {
-		log.error("####onInit");
 		super.onInit();
-		if (getLauncher() instanceof AbstractLauncher) {
-			((AbstractLauncher) getLauncher()).addInterceptor(this);
+		log.error("#####ONINIT");
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+		      @Override
+		      public void run() {
+		    	  log.error("#####SHUTTING DOWN");
+		      }
+		    });
+		if(getLauncher() instanceof AbstractLauncher) {
+			((AbstractLauncher)getLauncher()).addInterceptor(this);
 		}
 
 	}
@@ -45,24 +72,23 @@ public class SimpleAppmaster extends StaticEventingAppmaster implements
 	@Override
 	public void submitApplication() {
 		super.submitApplication();
-		int jobCount = Integer.parseInt(getParameters().getProperty(
-				"job-count", "10"));
+		int jobCount = Integer.parseInt(getParameters().getProperty("job-count", "10"));
 		log.info("Creating " + jobCount + " jobs");
-		for (int i = 1; i <= jobCount; i++) {
+		for (int i = 1; i<=jobCount; i++) {
 			pendingJobs.add((long) i);
 		}
 	}
 
 	@Override
-	public ContainerLaunchContext preLaunch(Container container,
-			ContainerLaunchContext context) {
-		log.error("####preLaunch");
+	public ContainerLaunchContext preLaunch(Container container, ContainerLaunchContext context) {
 		AppmasterService service = getAppmasterService();
+		log.error("#####AppmasterService: " + service);
 		if (service != null) {
+			log.error("#####AppmasterService PORT: " + service.getPort());
+			log.error("#####AppmasterService HOST: " + service.getHost());
 			int port = service.getPort();
 			String address = service.getHost();
-			Map<String, String> env = new HashMap<String, String>(
-					context.getEnvironment());
+			Map<String, String> env = new HashMap<String, String>(context.getEnvironment());
 			env.put(YarnSystemConstants.AMSERVICE_PORT, Integer.toString(port));
 			env.put(YarnSystemConstants.AMSERVICE_HOST, address);
 			context.setEnvironment(env);
@@ -75,29 +101,26 @@ public class SimpleAppmaster extends StaticEventingAppmaster implements
 	@Override
 	protected void onContainerCompleted(ContainerStatus status) {
 		super.onContainerCompleted(status);
-		log.error("####onContainerCompleted");
+		log.error("###CONTAINER COMPLETED, status = " + status);
 		if (hasJobs()) {
-			getAllocator().allocateContainers(1);
+			log.error("###CONTAINER SHITFUL WOULD START NEW ONE");
+//			getAllocator().allocateContainers(1);
 		}
 	}
 
 	@Override
 	protected boolean isComplete() {
-		log.error("####isComplete");
 		return !hasJobs();
 	}
 
 	/**
 	 * Report job status.
-	 * 
-	 * @param job
-	 *            the job id
-	 * @param success
-	 *            true if job execution was successful
+	 *
+	 * @param job the job id
+	 * @param success true if job execution was successful
 	 */
 	public void reportJobStatus(long job, boolean success) {
 		synchronized (lock) {
-			log.error("####reportJobStatus");
 			if (success) {
 				runningJobs.remove(job);
 			} else {
@@ -108,15 +131,13 @@ public class SimpleAppmaster extends StaticEventingAppmaster implements
 
 	/**
 	 * Gets the id of next job.
-	 * 
+	 *
 	 * @return the next job id, null if no more jobs exist
 	 */
 	public Long getJob() {
 		synchronized (lock) {
-			log.error("####getJob");
 			long now = System.currentTimeMillis();
-			Iterator<Entry<Long, Long>> iterator = runningJobs.entrySet()
-					.iterator();
+			Iterator<Entry<Long, Long>> iterator = runningJobs.entrySet().iterator();
 			if (iterator.hasNext()) {
 				Entry<Long, Long> entry = iterator.next();
 				if ((entry.getValue() + 20000) < now) {
@@ -137,21 +158,18 @@ public class SimpleAppmaster extends StaticEventingAppmaster implements
 
 	/**
 	 * Checks if there is any pending jobs.
-	 * 
+	 *
 	 * @return true, if pending jobs exist
 	 */
 	public boolean hasJobs() {
 		synchronized (lock) {
-			log.error("####hasJobs");
 			return !(pendingJobs.isEmpty() && runningJobs.isEmpty());
 		}
 	}
 
 	@Override
 	public String toString() {
-		log.error("####toString");
-		return "pendingJobs=" + pendingJobs.size() + " runningJobs="
-				+ runningJobs.size();
+		return "pendingJobs=" + pendingJobs.size() + " runningJobs=" + runningJobs.size();
 	}
 
 }
