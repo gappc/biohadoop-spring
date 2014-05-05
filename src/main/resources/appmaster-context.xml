@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:yarn="http://www.springframework.org/schema/yarn"
+	xmlns:util="http://www.springframework.org/schema/util" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:yarn-int="http://www.springframework.org/schema/yarn/integration"
+	xsi:schemaLocation="http://www.springframework.org/schema/yarn http://www.springframework.org/schema/yarn/spring-yarn.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
+	
+	<bean id="taskScheduler"
+		class="org.springframework.scheduling.concurrent.ConcurrentTaskScheduler" />
+	<bean id="taskExecutor" class="org.springframework.core.task.SyncTaskExecutor" />
+	
+	<yarn:master>
+	  <yarn:container-runner/>
+	</yarn:master>
+
+   <context:property-placeholder location="hadoop.properties" />
+
+	<yarn:configuration>
+		fs.defaultFS=${SHDP_HD_FS}
+		yarn.resourcemanager.address=${SHDP_HD_RM}
+		yarn.resourcemanager.scheduler.address=${SHDP_HD_SCHEDULER}
+	</yarn:configuration>
+
+	<yarn:localresources>
+		<yarn:hdfs path="/tmp/lib/*.jar" />
+	</yarn:localresources>
+
+	<yarn:environment>
+		<yarn:classpath />
+	</yarn:environment>
+	
+	<!-- <bean id="yarnAmservice" class="at.ac.uibk.dps.biohadoopspring.SimpleService" />
+	<bean id="yarnClientAmservice" class="at.ac.uibk.dps.biohadoopspring.SimpleClient" /> -->
+		
+	<bean id="customService" class="at.ac.uibk.dps.biohadoopspring.SimpleService" />
+
+	<!-- <yarn-int:amservice service-ref="customService"/> -->
+
+	<!-- <yarn-int:amservice
+	  service-impl="at.ac.uibk.dps.biohadoopspring.SimpleService"
+	  default-port="1234"/>
+	<yarn-int:amservice-client
+	  service-impl="at.ac.uibk.dps.biohadoopspring.SimpleClient"
+	  host="master"
+	  port="1234"/> -->
+</beans>
