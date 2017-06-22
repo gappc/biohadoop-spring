@@ -45,6 +45,9 @@ public class CustomContainer extends AbstractIntegrationYarnContainer {
 		Random random = new Random();
 		Long job = null;
 		boolean die = false;
+		
+		int count = 0;
+		long startTime = System.currentTimeMillis();
 
 		// run loop, we exit if appmaster asks or randomly
 		// in approximately once every 10 runs
@@ -58,33 +61,35 @@ public class CustomContainer extends AbstractIntegrationYarnContainer {
 				request.setState(JobRequest.State.JOBDONE);
 				request.job = job;
 			}
-			log.error("####ENV-PORT: " + getEnvironment(YarnSystemConstants.AMSERVICE_PORT));
-			log.error("####ENV-HOST: " + getEnvironment(YarnSystemConstants.AMSERVICE_HOST));
-			log.error("####PRE ERROR");
 			JobResponse response = (JobResponse) client.doMindRequest(request);
-			log.error("####POST ERROR");
 			if (response == null) {
 				die = true;
 				break;
 			}
-			log.info("Response state=" + response.getState());
+			log.debug("Response state=" + response.getState());
 
 			if (response.getState().equals(JobResponse.State.RUNJOB)) {
 				job = response.getJob();
-				log.info("Running job=" + job);
-				sleep(5);
+				if (count % 1000 == 0) {
+					long endTime = System.currentTimeMillis();
+					log.info("Count: " + count + " took " + (endTime - startTime) + "ms");
+					startTime = endTime;
+//					log.debug("Running job=" + job);
+				}
+				count++;
+//				sleep(5);
 			} else if (response.getState().equals(JobResponse.State.DIE)) {
 				// appmaster asked us to go away
 				die = true;
 			} else if (response.getState().equals(JobResponse.State.STANDBY)) {
 				// we're on standy, sleep a bit more
-				sleep(5);
+//				sleep(5);
 			}
 
 			// set job which may be null and
 			// sleep during the run loop
 			job = response.getJob();
-			sleep(1);
+//			sleep(1);
 //		} while (!die && random.nextInt(10) > 0);
 		} while (!die);
 		log.info("Bye, I'm done baby...");

@@ -141,6 +141,7 @@ public class CustomAppmaster extends StaticEventingAppmaster implements Containe
 			if (iterator.hasNext()) {
 				Entry<Long, Long> entry = iterator.next();
 				if ((entry.getValue() + 20000) < now) {
+					log.error("####RESCHEDULING JOB " + entry.getKey());
 					pendingJobs.add(entry.getKey());
 					iterator.remove();
 				}
@@ -151,7 +152,7 @@ public class CustomAppmaster extends StaticEventingAppmaster implements Containe
 				runningJobs.put(first, System.currentTimeMillis());
 			} catch (Exception e) {
 			}
-			log.info("Job counts: " + this + " returning " + first);
+			log.debug("Job counts: " + this + " returning " + first);
 			return first;
 		}
 	}

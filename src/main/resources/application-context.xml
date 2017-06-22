@@ -32,8 +32,8 @@
 	</yarn:environment>
 
 	<util:properties id="customArguments">
-		<prop key="container-count">${ca.cc:'5'}</prop>
-		<prop key="job-count">${ca.jc:'10'}</prop>
+		<prop key="container-count">${ca.cc:'1'}</prop>
+		<prop key="job-count">${ca.jc:'100000'}</prop>
 	</util:properties>
 
 	<yarn:client app-name="custom-amservice" memory="2000">

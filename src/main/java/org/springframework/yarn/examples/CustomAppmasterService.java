@@ -71,7 +71,7 @@ public class CustomAppmasterService extends MindAppmasterService {
 			response.setState(JobResponse.State.DIE);
 		}
 
-		log.info("Response: state=" + response.getState() + " job=" + response.getJob());
+		log.debug("Response: state=" + response.getState() + " job=" + response.getJob());
 
 		return response;
 	}
